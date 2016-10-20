@@ -12,6 +12,8 @@ const
   ScreenH = 272 # Window height
   WindowFlags = 0
   RendererFlags = sdl.RendererAccelerated or sdl.RendererPresentVsync
+  OriginX = ScreenW / 2
+  OriginY = ScreenH / 2
 
 
 type
@@ -71,9 +73,9 @@ proc rotate(ln: Line, rx, ry, rz: float): Line =
 
 
 proc paint(line: Line, renderer: sdl.Renderer): int {.discardable.} =
-  renderer.lineRGBA((line.v0.x + ScreenW/2).int16,
-    (line.v0.y + ScreenH/2).int16, (line.v1.x + ScreenW/2).int16,
-    (line.v1.y + ScreenH/2).int16, 255, 255, 255, 255)
+  renderer.lineRGBA((line.v0.x + OriginX).int16,
+    (line.v0.y + OriginY).int16, (line.v1.x + OriginX).int16,
+    (line.v1.y + OriginY).int16, 255, 255, 255, 255)
 
 proc newCube(center: Vector3, radius: float): Cube =
   var lines: seq[Line] = @[]
