@@ -3,13 +3,14 @@ import
     sdl2/sdl,
     sdl2/sdl_gfx_primitives as gfx,
     math,
+    basic3d,
     sequtils
 
 
 const
   Title = "SDL2 Test"
-  ScreenW = 480 # Window width
-  ScreenH = 272 # Window height
+  ScreenW = 320 # Window width
+  ScreenH = 240 # Window height
   WindowFlags = 0
   RendererFlags = sdl.RendererAccelerated or sdl.RendererPresentVsync
 
@@ -19,6 +20,16 @@ type
   AppObj = object
     window*: sdl.Window # Window pointer
     renderer*: sdl.Renderer # Rendering state pointer
+
+
+type Camera = tuple[eye: Vector3d, lt:Vector3d, rt:Vector3d, lb:Vector3d]
+  type Grid3d = tuple[min:Vector3d, max:Vector3d, pixel_size: float, pixels:seq[bool]]
+
+proc newGrid(min:Vector3d, max:Vector3d, pixel_size:float):Grid3d =
+  
+
+  
+
 
 ##########
 # COMMON #
@@ -100,10 +111,22 @@ var
   app = App(window: nil, renderer: nil)
   done = false # Main loop exit condition
   pressed: seq[sdl.Keycode] = @[] # Pressed keys
-  texture = app.renderer.createTexture(sdl.PIXEL_FORMAT_ARGB8888, sdl.TEXTUREACCESS_STREAMING, 100, 100)
-  pixels: array[100*100, uint32]
+  pixels: array[ScreenW * ScreenH, uint32]
 
 if init(app):
+
+  var texture = app.renderer.createTexture(sdl.PIXEL_FORMAT_ARGB8888, sdl.TEXTUREACCESS_STREAMING, ScreenW, ScreenH)
+  #for x in 0..(ScreenW * ScreenH - 1):
+  #    pixels[x] = cast[uint32](0xFFFFFFFF)
+
+  for y in 0..ScreenH-1:
+      pixels[y*ScreenW + y] = cast[uint32](0xFFFFFFFF)
+
+  if texture.updateTexture(nil, addr(pixels), ScreenW*sizeof(uint32)) != 0:
+    sdl.logCritical(sdl.LogCategoryError,
+                    "Can't update texture: %s",
+                    sdl.getError())
+
 
   # Main loop
   while not done:
@@ -115,15 +138,7 @@ if init(app):
     #              sdl.getError())
 
     #pixels[100*100 - 1] = cast[int32](0xFFFFFFFF)
-    for x in 0..(100*100-1):
-      pixels[x] = cast[uint32](0xAAAAAAAA)
-
-    if texture.updateTexture(nil, addr(pixels), 100*sizeof(uint32)) != 0:
-      sdl.logCritical(sdl.LogCategoryError,
-                    "Can't create renderer: %s",
-                    sdl.getError())
-
-
+   
     #texture.render(app.renderer, 0, 0)
 
     discard app.renderer.renderCopy(texture, nil, nil)
