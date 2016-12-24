@@ -21,11 +21,37 @@ type
     window*: sdl.Window # Window pointer
     renderer*: sdl.Renderer # Rendering state pointer
 
+type Ray = tuple[origin:Vector3d, direction:Vector3d]
+type Camera = tuple[eye:Vector3d, lt:Vector3d, rt:Vector3d, lb:Vector3d, width:float, height:float]
 
-type Camera = tuple[eye: Vector3d, lt:Vector3d, rt:Vector3d, lb:Vector3d]
-  type Grid3d = tuple[min:Vector3d, max:Vector3d, pixel_size: float, pixels:seq[bool]]
+proc newCamera():Camera =
+  let width = 320.0
+  let height = 240.0
+  let eye = vector3d(0,0,100)
+  let lt = vector3d( 0 - (width/2),height/2, 50)
+  let rt = vector3d(width / 2, height / 2, 50)
+  let lb = vector3d(0 - (width/2), 0 - (height / 2), 50)
+  return (eye, lt, rt, lb, width, height)
 
-proc newGrid(min:Vector3d, max:Vector3d, pixel_size:float):Grid3d =
+
+
+proc ray(camera:Camera, x:float, y:float):Ray =
+  var du = camera.rt - camera.lt
+  var dv = camera.lb - camera.lt
+  du.normalize()
+  dv.normalize()
+  let pu = du * x / camera.width
+  let pv = dv * y / camera.height
+  let point = camera.lt + pu + pv - camera.eye
+  return (camera.eye, point)
+
+
+
+
+#type BBox = tuple[min:Vector3d, max:Vector3d, used:bool]
+#type Grid3d = tuple[min:Vector3d, pixel_size:float, pixels:seq[BBox]]
+
+#proc newGrid(min:Vector3d, max:Vector3d, pixel_size:float):Grid3d =
   
 
   
