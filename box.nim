@@ -4,13 +4,14 @@ import
     sdl2/sdl_gfx_primitives as gfx,
     math,
     basic3d,
-    sequtils
+    sequtils,
+    times
 
 
 const
   Title = "SDL2 Test"
-  ScreenW = 320 # Window width
-  ScreenH = 240 # Window height
+  ScreenW = 480 # Window width
+  ScreenH = 272 # Window height
   WindowFlags = 0
   RendererFlags = sdl.RendererAccelerated or sdl.RendererPresentVsync
 
@@ -25,37 +26,70 @@ type Ray = tuple[origin:Vector3d, direction:Vector3d]
 type Camera = tuple[eye:Vector3d, lt:Vector3d, rt:Vector3d, lb:Vector3d, width:float, height:float]
 
 proc newCamera():Camera =
-  let width = 320.0
-  let height = 240.0
+  let width:float = ScreenW
+  let height:float = ScreenH
   let eye = vector3d(0,0,100)
   let lt = vector3d( 0 - (width/2),height/2, 50)
   let rt = vector3d(width / 2, height / 2, 50)
   let lb = vector3d(0 - (width/2), 0 - (height / 2), 50)
   return (eye, lt, rt, lb, width, height)
 
+proc rotate(camera:var Camera) =
+  let rt = rotateZ(0.1)
+  camera.lt &= rt
+  camera.rt &= rt
+  camera.lb &= rt
+  camera.eye &= rt
 
+
+var camera = newCamera()
 
 proc ray(camera:Camera, x:float, y:float):Ray =
-  var du = camera.rt - camera.lt
-  var dv = camera.lb - camera.lt
-  du.normalize()
-  dv.normalize()
-  let pu = du * x / camera.width
-  let pv = dv * y / camera.height
-  let point = camera.lt + pu + pv - camera.eye
+  let du = (camera.rt - camera.lt) / camera.width
+  let dv = (camera.lb - camera.lt) / camera.height
+  let pu = du * x
+  let pv = dv * y
+  var point = camera.lt + pu + pv - camera.eye
+  point.normalize()
   return (camera.eye, point)
 
+type BBox = tuple[min:Vector3d, max:Vector3d]
+let box:BBox = (vector3d(-40.0, -40.0, -40.0), vector3d(40.0, 40.0, 40.0))
 
+proc hit(box:BBox, ray:Ray):float =
+  var t1 = (box.min.x - ray.origin.x) / ray.direction.x
+  var t2 = (box.max.x - ray.origin.x) / ray.direction.x
+  var tmin = min(t1,t2)
+  var tmax = max(t1,t2)
 
+  t1 = (box.min.y - ray.origin.y) / ray.direction.y
+  t2 = (box.max.y - ray.origin.y) / ray.direction.y
+  tmin = max(tmin,min(t1,t2))
+  tmax = min(tmax,max(t1,t2))
 
-#type BBox = tuple[min:Vector3d, max:Vector3d, used:bool]
+  t1 = (box.min.z - ray.origin.z) / ray.direction.z
+  t2 = (box.max.z - ray.origin.z) / ray.direction.z
+  tmin = max(tmin,min(t1,t2))
+  tmax = min(tmax,max(t1,t2))
+
+  if tmax >= tmin and tmax > 0.0:
+    return tmax
+  else:
+    return 0.0
+ 
 #type Grid3d = tuple[min:Vector3d, pixel_size:float, pixels:seq[BBox]]
 
 #proc newGrid(min:Vector3d, max:Vector3d, pixel_size:float):Grid3d =
-  
 
-  
 
+proc render[I](buffer:var array[I, uint32]) =
+  for y in 0..(ScreenH-1):
+    for x in 0..(ScreenW-1):
+      let ray = camera.ray(x.float, y.float)
+      if box.hit(ray) > 0:
+        buffer[y * ScreenW + x] = (0xFFFFFFFF).uint32
+      else:
+        buffer[y * ScreenW + x] = 0
 
 ##########
 # COMMON #
@@ -142,20 +176,10 @@ var
 if init(app):
 
   var texture = app.renderer.createTexture(sdl.PIXEL_FORMAT_ARGB8888, sdl.TEXTUREACCESS_STREAMING, ScreenW, ScreenH)
-  #for x in 0..(ScreenW * ScreenH - 1):
-  #    pixels[x] = cast[uint32](0xFFFFFFFF)
-
-  for y in 0..ScreenH-1:
-      pixels[y*ScreenW + y] = cast[uint32](0xFFFFFFFF)
-
-  if texture.updateTexture(nil, addr(pixels), ScreenW*sizeof(uint32)) != 0:
-    sdl.logCritical(sdl.LogCategoryError,
-                    "Can't update texture: %s",
-                    sdl.getError())
-
-
+  
   # Main loop
   while not done:
+    var start = cpuTime()
     # Clear screen with draw color
     #discard app.renderer.setRenderDrawColor(0x00, 0x00, 0x00, 0xFF)
     #if app.renderer.renderClear() != 0:
@@ -166,6 +190,14 @@ if init(app):
     #pixels[100*100 - 1] = cast[int32](0xFFFFFFFF)
    
     #texture.render(app.renderer, 0, 0)
+    
+    render(pixels)
+    discard texture.updateTexture(nil, addr(pixels), ScreenW*sizeof(uint32))
+    #if texture.updateTexture(nil, addr(pixels), ScreenW*sizeof(uint32)) != 0:
+    #  sdl.logCritical(sdl.LogCategoryError,
+    #                "Can't update texture: %s",
+    #                sdl.getError())
+    camera.rotate()
 
     discard app.renderer.renderCopy(texture, nil, nil)
 
@@ -174,6 +206,8 @@ if init(app):
 
     # Event handling
     done = events(pressed)
+
+    echo cpuTime() - start
 
 # Shutdown
 exit(app)
