@@ -5,7 +5,8 @@ import
     math,
     basic3d,
     sequtils,
-    times
+    times,
+    strutils
 
 
 const
@@ -13,7 +14,7 @@ const
   ScreenW = 480 # Window width
   ScreenH = 272 # Window height
   WindowFlags = 0
-  RendererFlags = sdl.RendererAccelerated or sdl.RendererPresentVsync
+  RendererFlags = sdl.RendererAccelerated
 
 
 type
@@ -201,13 +202,14 @@ if init(app):
 
     discard app.renderer.renderCopy(texture, nil, nil)
 
+    let fps = 1.0/(cpuTime() - start)
+    discard app.renderer.stringRGBA(0, 0, (fps.formatFloat).cstring, 255.uint8, 255.uint8, 255.uint8, 255.uint8)
+
     # Update renderer
     app.renderer.renderPresent()
 
     # Event handling
     done = events(pressed)
-
-    echo cpuTime() - start
 
 # Shutdown
 exit(app)
