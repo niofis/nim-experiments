@@ -29,19 +29,18 @@ type Camera = tuple[eye:Vector3d, lt:Vector3d, rt:Vector3d, lb:Vector3d, width:f
 proc newCamera():Camera =
   let width:float = ScreenW
   let height:float = ScreenH
-  let eye = vector3d(0,0,100)
-  let lt = vector3d( 0 - (width/2),height/2, 50)
-  let rt = vector3d(width / 2, height / 2, 50)
-  let lb = vector3d(0 - (width/2), 0 - (height / 2), 50)
+  let eye = vector3d(0,0,-100)
+  let lt = vector3d( 0 - (width/2),height/2, -50)
+  let rt = vector3d(width / 2, height / 2, -50)
+  let lb = vector3d(0 - (width/2), 0 - (height / 2), -50)
   return (eye, lt, rt, lb, width, height)
 
 proc rotate(camera:var Camera) =
-  let rt = rotateZ(0.1)
+  let rt = rotateY(0.1)
   camera.lt &= rt
   camera.rt &= rt
   camera.lb &= rt
   camera.eye &= rt
-
 
 var camera = newCamera()
 
@@ -55,7 +54,6 @@ proc ray(camera:Camera, x:float, y:float):Ray =
   return (camera.eye, point)
 
 type BBox = tuple[min:Vector3d, max:Vector3d]
-let box:BBox = (vector3d(-40.0, -40.0, -40.0), vector3d(40.0, 40.0, 40.0))
 
 proc hit(box:BBox, ray:Ray):float =
   var t1 = (box.min.x - ray.origin.x) / ray.direction.x
@@ -78,19 +76,50 @@ proc hit(box:BBox, ray:Ray):float =
   else:
     return 0.0
  
-#type Grid3d = tuple[min:Vector3d, pixel_size:float, pixels:seq[BBox]]
+type Grid3d = tuple[box:BBox, width:float, pixels:seq[bool], cell_count_1d:float]
 
-#proc newGrid(min:Vector3d, max:Vector3d, pixel_size:float):Grid3d =
+proc newGrid(center:Vector3d, width:float, cell_count_1d:float):Grid3d =
+  let bmin = center - width
+  let bmax = center + width
+  #let count = cell_count_1d * cell_count_1d * cell_count_1d
+  let count = 100.0 * 100.0 * 100.0
+  var cells = newSeq[bool](count.int)
+  cells[0] = true
+  cells[0*100*100 + 0*100 + 99] = true
+  cells[0*100*100 + 99*100 + 0] = true
+  cells[0*100*100 + 99*100 + 99] = true
+  cells[99*100*100 + 0*100 + 0] = true
+  cells[99*100*100 + 0*100 + 99] = true
+  cells[99*100*100 + 99*100 + 0] = true
+  cells[99*100*100 + 99*100 + 99] = true
+  for i in 0..9999:
+    let r = random(1000000)
+    cells[r] = true
+  let grid:Grid3d = ((bmin, bmax), width, cells, cell_count_1d)
+  return grid
 
+let grid = newGrid(vector3d(0,0,0), 50.0, 50)
+
+proc hit(grid:Grid3d, ray:Ray):bool =
+  let d = grid.box.hit(ray)
+  if (d == 0):
+    return false
+  let pt = ((ray.origin + (ray.direction * d)) - grid.box.min)# / grid.cell_count_1d
+  let idx = (pt.z.int * 100 * 100) + (pt.y.int * 100) + pt.x.int
+  if idx >= 1_000_000:
+    return false
+  return grid.pixels[idx]
 
 proc render[I](buffer:var array[I, uint32]) =
   for y in 0..(ScreenH-1):
     for x in 0..(ScreenW-1):
       let ray = camera.ray(x.float, y.float)
-      if box.hit(ray) > 0:
+      if grid.hit(ray):
         buffer[y * ScreenW + x] = (0xFFFFFFFF).uint32
       else:
         buffer[y * ScreenW + x] = 0
+
+
 
 ##########
 # COMMON #
@@ -178,11 +207,13 @@ if init(app):
 
   var texture = app.renderer.createTexture(sdl.PIXEL_FORMAT_ARGB8888, sdl.TEXTUREACCESS_STREAMING, ScreenW, ScreenH)
   
+  #let ray = camera.ray(240.0, 100.0)
+  #echo grid.hit(ray)
   # Main loop
   while not done:
     var start = cpuTime()
     # Clear screen with draw color
-    #discard app.renderer.setRenderDrawColor(0x00, 0x00, 0x00, 0xFF)
+    #mdiscard app.renderer.setRenderDrawColor(0x00, 0x00, 0x00, 0xFF)
     #if app.renderer.renderClear() != 0:
     #  sdl.logWarn(sdl.LogCategoryVideo,
     #              "Can't clear screen: %s",
