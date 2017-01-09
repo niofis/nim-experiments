@@ -93,22 +93,29 @@ proc newGrid(center:Vector3d, width:float, cell_count_1d:float):Grid3d =
   cells[99*100*100 + 99*100 + 0] = true
   cells[99*100*100 + 99*100 + 99] = true
   for i in 0..9999:
-    let r = random(1000000)
+    let r = random(100)
     cells[r] = true
   let grid:Grid3d = ((bmin, bmax), width, cells, cell_count_1d)
   return grid
 
 let grid = newGrid(vector3d(0,0,0), 50.0, 50)
 
+proc idx(pt:Vector3d): int =
+  return (pt.z.int * 100 * 100) + (pt.y.int * 100) + pt.x.int
+
+
 proc hit(grid:Grid3d, ray:Ray):bool =
   let d = grid.box.hit(ray)
   if (d == 0):
     return false
-  let pt = ((ray.origin + (ray.direction * d)) - grid.box.min)# / grid.cell_count_1d
-  let idx = (pt.z.int * 100 * 100) + (pt.y.int * 100) + pt.x.int
-  if idx >= 1_000_000:
-    return false
-  return grid.pixels[idx]
+  var pt = ((ray.origin + (ray.direction * d)) - grid.box.min)# / grid.cell_count_1d
+  var id = idx(pt)
+  while id > 0 and id < 1_000_000:
+    if grid.pixels[id]:
+      return true
+    pt = pt + ray.direction
+    id = idx(pt)
+  return false
 
 proc render[I](buffer:var array[I, uint32]) =
   for y in 0..(ScreenH-1):
