@@ -92,8 +92,8 @@ proc newGrid(center:Vector3d, width:float, cell_count_1d:float):Grid3d =
   cells[99*100*100 + 0*100 + 99] = true
   cells[99*100*100 + 99*100 + 0] = true
   cells[99*100*100 + 99*100 + 99] = true
-  for i in 0..9999:
-    let r = random(100)
+  for i in 0..999:
+    let r = random(1_000_000)
     cells[r] = true
   let grid:Grid3d = ((bmin, bmax), width, cells, cell_count_1d)
   return grid
